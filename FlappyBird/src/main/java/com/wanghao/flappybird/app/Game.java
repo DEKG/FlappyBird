@@ -17,6 +17,15 @@ import java.util.concurrent.*;
 public class Game extends Frame {
     private static final long serialVersionUID = 1L;
 
+    //游戏状态
+    private static int gameState;
+    // 游戏未开始
+    public static final int GAME_READY = 0;
+    // 游戏开始
+    public static final int GAME_START = 1;
+    // 游戏结束
+    public static final int STATE_OVER = 2;
+
     private static ExecutorService executor = new ThreadPoolExecutor(2, 2, 60L, TimeUnit.SECONDS, new ArrayBlockingQueue<>(10), Executors.defaultThreadFactory());
     //游戏背景对象
     private GameBackground background;
@@ -63,6 +72,7 @@ public class Game extends Frame {
     private void initGame() {
         background = new GameBackground();
         bird = new Bird();
+        setGameState(GAME_READY);
 
         //启动用于刷新窗口的线程
         executor.execute(() -> {
@@ -88,7 +98,12 @@ public class Game extends Frame {
         //使用图片画笔将需要绘制的内容绘制到图片
         //背景层
         background.draw(bufG, bird);
+        bird.draw(bufG);
         //一次性将图片绘制到屏幕上
         g.drawImage(bufImg, 0, 0, null);
+    }
+
+    public static void setGameState(int gameState) {
+        Game.gameState = gameState;
     }
 }

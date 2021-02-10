@@ -5,6 +5,7 @@ import com.sun.corba.se.impl.orbutil.graph.Graph;
 import com.wanghao.flappybird.app.Game;
 import com.wanghao.flappybird.util.Constant;
 import com.wanghao.flappybird.util.GameUtil;
+import com.wanghao.flappybird.util.MusicUtil;
 
 import java.awt.*;
 import java.awt.image.BufferedImage;
@@ -44,6 +45,7 @@ public class Bird {
 
     //计分器
     private final ScoreCounter counter;
+    private final GameOverAnimation gameOverAnimation;
 
     public static int BIRD_WIDTH;
     public static int BIRD_HEIGHT;
@@ -52,12 +54,13 @@ public class Bird {
     public Bird() {
         //计分器
         counter = ScoreCounter.getInstance();
+        gameOverAnimation = new GameOverAnimation();
 
         //读取小鸟图片资源
         birdImages = new BufferedImage[STATE_COUNT][IMG_COUNT];
         for (int j = 0; j < STATE_COUNT; j++) {
             for (int i = 0; i < IMG_COUNT; i++) {
-                birdImages[j][i] = GameUtil.loadBufferedImage(Constant.BIRDS_IMG_PATH[j][i])
+                birdImages[j][i] = GameUtil.loadBufferedImage(Constant.BIRDS_IMG_PATH[j][i]);
             }
         }
 
@@ -82,7 +85,63 @@ public class Bird {
      * @param g
      */
     public void draw(Graphics g) {
+        movement();
+        //图片资源索引
+        int state_index = Math.min(state, BIRD_DEAD_FAIL);
+        //小鸟中心点计算
+        int halfImgWidth = birdImages[state_index][0].getWidth() >> 1;
+        int halfImgHeight = birdImages[state_index][0].getHeight() >> 1;
+        if (velocity > 0) {
+            image = birdImages[BIRD_UP][0];
+        }
+        //x坐标位于窗口1/4处，y坐标位于窗口中心
+        g.drawImage(image, x - halfImgWidth, y - halfImgHeight, null);
 
+//        if (state == BIRD_DEAD) {
+//            gameOverAnimation.draw(g, this);
+//        } else if (state != BIRD_DEAD_FAIL) {
+//            drawScore(g);
+//        }
+    }
+
+    // players speed on flapping
+    public static final int ACC_FLAP = 14;
+    // players downward acceleration
+    public static final double ACC_Y = 2;
+    // max vel along Y, max descend speed
+    public static final int MAX_VEL_Y = 15;
+    // bird's velocity along Y, default same as playerFlapped
+    private int velocity = 0;
+    private final int BOTTOM_BOUNDARY = Constant.FRAME_HEIGHT - GameBackground.GROUND_HEIGHT - (BIRD_HEIGHT / 2);
+
+    //小鸟的飞行逻辑
+    private void movement() {
+//翅膀状态，实现小鸟振翅飞行
+        wingState++;
+        image = birdImages[Math.min(state, BIRD_DEAD_FAIL)][wingState / 10 % IMG_COUNT];
+        if (state == BIRD_FAIL || state == BIRD_DEAD_FAIL) {
+            freeFall();
+            if (birdCollisionRect.y > BOTTOM_BOUNDARY) {
+                if (state == BIRD_FAIL) {
+                    MusicUtil.playCrash();
+                }
+                die();
+            }
+        }
+    }
+
+    private void freeFall() {
+        if (velocity < MAX_VEL_Y) {
+            velocity -= ACC_Y;
+        }
+        y = Math.min((y - velocity), BOTTOM_BOUNDARY);
+        birdCollisionRect.y = birdCollisionRect.y - velocity;
+    }
+
+    private void die() {
+        counter.saveScore();
+        state = BIRD_DEAD;
+        Game.setGameState(Game.STATE_OVER);
     }
 
     /**
